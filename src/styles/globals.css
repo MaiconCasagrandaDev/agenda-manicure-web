@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Paleta nude rosé */
+@theme {
+    --color-background: #fbf6f3;
+    --color-surface: #ffffff;
+    --color-soft: #ead2cc;
+    --color-primary: #9c5b5b;
+    --color-primary-hover: #864a4a;
+    --color-ink: #3a2e2c;
+    --color-muted: #8c7b77;
+}
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-ink);
+}
