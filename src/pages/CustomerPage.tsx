@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { createAppointment } from "../api/appointments";
+import { ApiError } from "../api/errors";
 import { useBooking } from "../booking/BookingContext";
 import { TextField } from "../components/TextField";
 import { formatBrazilianMobile, parseBrazilianMobile } from "../lib/phone";
@@ -18,22 +20,29 @@ function validateName(value: string) {
 }
 
 export function CustomerPage() {
-    const { selectedServices, customer, setCustomer } = useBooking();
+    const {
+        selectedServices, setSelectedServices,
+        slot, setSlot,
+        customer, setCustomer,
+        setReceipt,
+    } = useBooking();
+    const navigate = useNavigate();
 
-    // Se ela voltou para esta tela, os campos já vêm preenchidos
     const [firstName, setFirstName] = useState(customer?.firstName ?? "");
     const [lastName, setLastName] = useState(customer?.lastName ?? "");
     const [phone, setPhone] = useState(customer ? formatBrazilianMobile(customer.phone.slice(3)) : "");
     const [whatsappOptIn, setWhatsappOptIn] = useState(customer?.whatsappOptIn ?? false);
     const [errors, setErrors] = useState<Errors>({});
-    const [saved, setSaved] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
-    if (selectedServices.length === 0) {
+    // Sem serviço ou sem horário: volta para o começo do fluxo
+    if (selectedServices.length === 0 || !slot) {
         return (
         <main className="mx-auto max-w-md px-4 pt-8">
-            <p className="text-muted">Você ainda não escolheu nenhum serviço.</p>
+            <p className="text-muted">Faltam informações do agendamento.</p>
             <Link to="/" className="mt-2 inline-block font-semibold text-primary">
-            Escolher serviços
+            Começar de novo
             </Link>
         </main>
         );
@@ -45,7 +54,9 @@ export function CustomerPage() {
         if (digits) setPhone(formatBrazilianMobile(digits));
     }
 
-    function handleSubmit() {
+    async function handleSubmit() {
+        if (submitting || !slot) return; // evita enviar duas vezes
+
         const phoneDigits = parseBrazilianMobile(phone);
         const newErrors: Errors = {
         firstName: validateName(firstName),
@@ -53,21 +64,46 @@ export function CustomerPage() {
         phone: phoneDigits ? undefined : "Informe um celular com DDD. Ex.: (54) 99999-1234",
         };
         setErrors(newErrors);
-
         if (newErrors.firstName || newErrors.lastName || !phoneDigits) return;
 
-        setCustomer({
+        const customerData = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: `+55${phoneDigits}`,
         whatsappOptIn,
+        };
+        setCustomer(customerData); // fica salvo para um próximo agendamento
+
+        setSubmitError(null);
+        setSubmitting(true);
+        try {
+        const created = await createAppointment({
+            serviceIds: selectedServices.map((s) => s.id),
+            date: slot.date,
+            time: slot.time,
+            customer: customerData,
         });
-        setSaved(true);
+
+        setReceipt({
+            ...created,
+            hasStartingAt: selectedServices.some((s) => s.priceIsStartingAt),
+        });
+        // Limpa o pedido: "voltar" não reenvia o mesmo agendamento
+        setSelectedServices([]);
+        setSlot(null);
+        navigate("/pedido-recebido", { replace: true });
+        } catch (err) {
+        setSubmitError(
+            err instanceof ApiError ? err.message : "Sem conexão com o servidor. Tente novamente.",
+        );
+        } finally {
+        setSubmitting(false);
+        }
     }
 
     return (
         <main className="mx-auto max-w-md px-4 pt-8 pb-12">
-        <Link to="/" className="text-sm text-primary">← Voltar</Link>
+        <Link to="/horario" className="text-sm text-primary">← Voltar</Link>
         <h1 className="mt-4 text-2xl font-semibold text-ink">Seus dados</h1>
         <p className="mt-1 text-sm text-muted">
             {selectedServices.map((s) => s.name).join(", ")}
@@ -122,22 +158,23 @@ export function CustomerPage() {
             Quero receber a confirmação e o lembrete do horário pelo WhatsApp
             </label>
 
-            <p className="text-xs text-muted">
-            Seus dados são usados só para o seu agendamento.
-            </p>
+            <p className="text-xs text-muted">Seus dados são usados só para o seu agendamento.</p>
+
+            {/* Erro vindo da API, ex.: horário já reservado ou fora do atendimento */}
+            {submitError && (
+            <div role="alert" className="rounded-xl border-2 border-primary bg-surface p-3 text-sm text-ink">
+                {submitError}{" "}
+                <Link to="/horario" className="font-semibold text-primary">Trocar horário</Link>
+            </div>
+            )}
 
             <button
             type="submit"
-            className="w-full rounded-xl bg-primary py-3 font-semibold text-white transition hover:bg-primary-hover"
+            disabled={submitting}
+            className="w-full rounded-xl bg-primary py-3 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-            Continuar
+            {submitting ? "Enviando..." : "Agendar"}
             </button>
-
-            {saved && (
-            <p className="text-center text-sm text-muted">
-                ✓ Dados salvos. A próxima tela entra em breve.
-            </p>
-            )}
         </form>
         </main>
     );

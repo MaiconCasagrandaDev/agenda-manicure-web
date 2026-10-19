@@ -93,7 +93,7 @@ export function ServicesPage() {
             </div>
             <button
                 type="button"
-                onClick={() => navigate("/seus-dados")}
+                onClick={() => navigate("/horario")}
                 disabled={selectedServices.length === 0}
                 className="rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >

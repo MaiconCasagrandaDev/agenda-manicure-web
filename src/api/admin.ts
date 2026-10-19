@@ -1,20 +1,8 @@
+import { toApiError } from "./errors";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export type Admin = { email: string };
-
-// Erro que carrega a mensagem enviada pela API (ex.: "Muitas tentativas...")
-export class ApiError extends Error {
-    status: number;
-    constructor(message: string, status: number) {
-        super(message);
-        this.status = status;
-    }
-}
-
-async function toApiError(response: Response) {
-    const body = await response.json().catch(() => null);
-    return new ApiError(body?.error ?? "Algo deu errado. Tente novamente.", response.status);
-}
 
 // credentials: "include" → o navegador envia e guarda o cookie da API,
 // mesmo ela estando em outra porta (outra origem)

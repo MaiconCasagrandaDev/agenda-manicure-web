@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ApiError, login } from "../../api/admin";
 import { TextField } from "../../components/TextField";
+import { login } from "../../api/admin";
+import { ApiError } from "../../api/errors";
 
 export function LoginPage() {
     const [email, setEmail] = useState("");
@@ -25,7 +26,11 @@ export function LoginPage() {
         navigate("/admin", { replace: true }); // replace: o "voltar" não retorna ao login
         } catch (err) {
         // Mostra a mensagem da API (genérica de propósito) ou erro de conexão
-        setError(err instanceof ApiError ? err.message : "Sem conexão com o servidor. Tente novamente.");
+        setError(
+            err instanceof ApiError
+            ? err.message
+            : "Sem conexão com o servidor. Tente novamente.",
+        );
         setPassword("");
         } finally {
         setSubmitting(false);
@@ -34,7 +39,9 @@ export function LoginPage() {
 
     return (
         <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center px-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Painel</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Painel
+        </p>
         <h1 className="mt-1 text-2xl font-semibold text-ink">Entrar</h1>
 
         <form
