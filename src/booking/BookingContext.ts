@@ -1,16 +1,22 @@
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
 import type { Service } from "../api/services";
 
-// O que fica guardado no agendamento em andamento
+export type Customer = {
+    firstName: string;
+    lastName: string;
+    phone: string; // formato internacional, ex.: "+5554999991234"
+    whatsappOptIn: boolean;
+};
+
 export type BookingContextValue = {
     selectedServices: Service[];
     setSelectedServices: Dispatch<SetStateAction<Service[]>>;
+    customer: Customer | null;
+    setCustomer: Dispatch<SetStateAction<Customer | null>>;
 };
 
 export const BookingContext = createContext<BookingContextValue | null>(null);
 
-// Atalho para as telas lerem o contexto.
-// Se alguém esquecer o Provider, o erro avisa na hora em vez de falhar escondido.
 export function useBooking() {
     const context = useContext(BookingContext);
     if (!context) {
