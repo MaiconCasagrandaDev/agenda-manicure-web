@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { getServices, type Service } from "../api/services";
+import { useBooking } from "../booking/BookingContext";
 import { ServiceCard } from "../components/ServiceCard";
 import { formatDuration, formatPrice } from "../lib/format";
 
@@ -9,8 +11,9 @@ export function ServicesPage() {
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    // Guardamos só os IDs escolhidos, não os serviços inteiros
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    // A seleção agora vem do contexto, então sobrevive à troca de tela
+    const { selectedServices, setSelectedServices } = useBooking();
+    const navigate = useNavigate();
 
     useEffect(() => {
         let ignore = false;
@@ -24,25 +27,26 @@ export function ServicesPage() {
     }, []);
 
     // Marca ou desmarca um serviço
-    function toggleService(id: number) {
-        setSelectedIds((current) =>
-        current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+    function toggleService(service: Service) {
+        setSelectedServices((current) =>
+        current.some((s) => s.id === service.id)
+            ? current.filter((s) => s.id !== service.id)
+            : [...current, service],
         );
     }
 
-    // Valores calculados a partir do estado (não precisam de useState)
-    const selectedServices = services.filter((s) => selectedIds.includes(s.id));
-    const limitReached = selectedIds.length >= MAX_SELECTED;
+    // Valores calculados a partir da seleção
+    const limitReached = selectedServices.length >= MAX_SELECTED;
     // Soma em centavos para não ter erro de arredondamento
     const totalCents = selectedServices.reduce((sum, s) => sum + Math.round(Number(s.price) * 100), 0);
     const totalMinutes = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
     const hasStartingAt = selectedServices.some((s) => s.priceIsStartingAt);
 
     if (loading) return <p className="mx-auto max-w-md px-4 pt-8 text-muted">Carregando serviços...</p>;
-    if (error) return <p className="mx-auto max-w-md px-4 pt-8 text-primary">Não foi possível carregar os serviços.</p>;
+    if (error) return <p className="mx-auto max-w-md px-4 pt-8 text-primary">Não foi possível carregar os serviços!</p>;
 
     return (
-        <>
+    <>
         <main className="mx-auto max-w-md px-4 pt-8 pb-32">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">Agendar</p>
             <h1 className="mt-1 text-2xl font-semibold text-ink">Escolha seus serviços</h1>
@@ -50,14 +54,14 @@ export function ServicesPage() {
 
             <ul className="mt-6 space-y-3">
             {services.map((service) => {
-                const selected = selectedIds.includes(service.id);
+                const selected = selectedServices.some((s) => s.id === service.id);
                 return (
                 <li key={service.id}>
                     <ServiceCard
                     service={service}
                     selected={selected}
                     disabled={!selected && limitReached}
-                    onToggle={() => toggleService(service.id)}
+                    onToggle={() => toggleService(service)}
                     />
                 </li>
                 );
@@ -89,6 +93,7 @@ export function ServicesPage() {
             </div>
             <button
                 type="button"
+                onClick={() => navigate("/seus-dados")}
                 disabled={selectedServices.length === 0}
                 className="rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
