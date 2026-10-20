@@ -2,16 +2,18 @@ import { Link } from "react-router";
 import { SALON_NAME } from "../config";
 
 type BookingHeaderProps = {
-  backTo: string; // para onde a seta "voltar" leva
+  backTo?: string; // opcional: sem ele, a seta não aparece
 };
 
 export function BookingHeader({ backTo }: BookingHeaderProps) {
   return (
     <header className="border-b border-soft bg-background">
       <div className="mx-auto flex max-w-md items-center gap-3 px-4 py-3">
-        <Link to={backTo} aria-label="Voltar" className="px-1 text-2xl text-ink">
-          ←
-        </Link>
+        {backTo && (
+          <Link to={backTo} aria-label="Voltar" className="px-1 text-2xl text-ink">
+            ←
+          </Link>
+        )}
 
         {/* Logo provisório: inicial do nome dentro de um círculo */}
         <div

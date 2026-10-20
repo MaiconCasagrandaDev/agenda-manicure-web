@@ -1,49 +1,66 @@
 import type { Service } from "../api/services";
 import { formatDuration, formatPrice } from "../lib/format";
 
-// Props: o que a tela "entrega" para o card
 type ServiceCardProps = {
-    service: Service;
-    selected: boolean;
-    disabled: boolean;
-    onToggle: () => void;
+  service: Service;
+  selected: boolean;
+  disabled: boolean;
+  onToggle: () => void;
 };
 
-export function ServiceCard({ service, selected, disabled, onToggle }: ServiceCardProps) {
-    return (
-        // Um <button> de verdade: funciona com teclado e leitor de tela
-        <button
-        type="button"
-        onClick={onToggle}
-        disabled={disabled}
-        aria-pressed={selected}
-        className={`flex w-full items-center gap-3 rounded-2xl border-2 bg-surface p-3 text-left transition
-            ${selected ? "border-primary" : "border-soft"}
-            ${disabled ? "cursor-not-allowed opacity-50" : "hover:border-primary"}`}
+export function ServiceCard({
+  service,
+  selected,
+  disabled,
+  onToggle,
+}: ServiceCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={`flex min-h-28 w-full items-stretch overflow-hidden rounded-2xl border-2 bg-surface text-left transition
+        ${selected ? "border-primary" : "border-soft"}
+        ${disabled ? "cursor-not-allowed opacity-50" : "hover:border-primary"}`}
+    >
+      {/* Foto ocupando a lateral (ou espaço reservado até as fotos chegarem) */}
+      {service.imageUrl ? (
+        <img
+          src={service.imageUrl}
+          alt=""
+          className="w-28 shrink-0 object-cover"
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="flex w-28 shrink-0 items-center justify-center bg-soft text-3xl font-semibold text-primary"
         >
-        {/* Foto do serviço, ou um quadrado na cor suave enquanto não tem foto */}
-        {service.imageUrl ? (
-            <img src={service.imageUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
-        ) : (
-            <div className="size-16 shrink-0 rounded-xl bg-soft" aria-hidden="true" />
-        )}
+          {service.name.charAt(0)}
+        </div>
+      )}
 
+      <div className="flex min-w-0 flex-1 items-center gap-3 p-4">
         <div className="min-w-0 flex-1">
-            <p className="font-semibold text-ink">{service.name}</p>
-            <p className="text-sm text-muted">
-            {service.priceIsStartingAt && "a partir de "}
-            {formatPrice(service.price)} · {formatDuration(service.durationMinutes)}
-            </p>
+          <p className="font-bold uppercase leading-tight text-ink">
+            {service.name}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {formatPrice(service.price)}
+            {service.priceIsStartingAt && " (a partir de)"} |{" "}
+            {formatDuration(service.durationMinutes)}
+          </p>
         </div>
 
         {/* Caixinha de marcar */}
         <span
-            aria-hidden="true"
-            className={`flex size-6 shrink-0 items-center justify-center rounded-md text-sm font-bold
-            ${selected ? "bg-primary text-white" : "border-2 border-muted"}`}
+          aria-hidden="true"
+          className={`flex size-7 shrink-0 items-center justify-center rounded-md border-2 text-base font-bold
+            ${selected ? "border-primary bg-primary text-white" : "border-ink"}`}
         >
-            {selected && "✓"}
+          {selected && "✓"}
         </span>
-        </button>
-    );
+      </div>
+    </button>
+  );
 }

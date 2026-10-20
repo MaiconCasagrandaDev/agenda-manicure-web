@@ -3,8 +3,17 @@ import { Link, useNavigate } from "react-router";
 import { getAvailability, type AvailableDay } from "../api/availability";
 import { useBooking } from "../booking/BookingContext";
 import { BookingHeader } from "../components/BookingHeader";
+import { BookingFooter } from "../components/BookingFooter";
 
-const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const WEEKDAYS = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
 
 // "2026-10-21" → "21/10"
 function shortDate(date: string) {
@@ -19,8 +28,12 @@ export function DateTimePage() {
   const [days, setDays] = useState<AvailableDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(slot?.date ?? null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(slot?.time ?? null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    slot?.date ?? null,
+  );
+  const [selectedTime, setSelectedTime] = useState<string | null>(
+    slot?.time ?? null,
+  );
 
   // Texto estável ("1,3") para o useEffect saber quando buscar de novo
   const serviceKey = selectedServices.map((s) => s.id).join(",");
@@ -36,14 +49,24 @@ export function DateTimePage() {
         // Mantém o dia escolhido antes, se ainda tiver horário;
         // senão, seleciona o primeiro dia com horário livre
         setSelectedDate((current) => {
-          const stillValid = data.days.some((d) => d.date === current && d.slots.length > 0);
-          return stillValid ? current : (data.days.find((d) => d.slots.length > 0)?.date ?? null);
+          const stillValid = data.days.some(
+            (d) => d.date === current && d.slots.length > 0,
+          );
+          return stillValid
+            ? current
+            : (data.days.find((d) => d.slots.length > 0)?.date ?? null);
         });
       })
-      .catch(() => { if (!ignore) setError("Não foi possível carregar os horários."); })
-      .finally(() => { if (!ignore) setLoading(false); });
+      .catch(() => {
+        if (!ignore) setError("Não foi possível carregar os horários.");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
 
-    return () => { ignore = true; };
+    return () => {
+      ignore = true;
+    };
   }, [serviceKey]);
 
   if (selectedServices.length === 0) {
@@ -95,7 +118,7 @@ export function DateTimePage() {
 
               <div
                 ref={stripRef}
-                className="flex snap-x gap-2 overflow-x-auto py-1 [scrollbar-width:none]"
+                className="flex snap-x gap-2 overflow-x-auto py-1 scrollbar-none"
               >
                 {days.map((d) => {
                   const full = d.slots.length === 0;
@@ -111,8 +134,12 @@ export function DateTimePage() {
                         ${selected ? "border-primary bg-primary text-white" : "border-soft bg-surface text-ink"}
                         ${full ? "cursor-not-allowed opacity-40" : "hover:border-primary"}`}
                     >
-                      <span className="block text-lg font-semibold">{shortDate(d.date)}</span>
-                      <span className="block text-sm">{full ? "Sem horários" : WEEKDAYS[d.weekday]}</span>
+                      <span className="block text-lg font-semibold">
+                        {shortDate(d.date)}
+                      </span>
+                      <span className="block text-sm">
+                        {full ? "Sem horários" : WEEKDAYS[d.weekday]}
+                      </span>
                     </button>
                   );
                 })}
@@ -128,9 +155,15 @@ export function DateTimePage() {
               </button>
             </div>
 
-            <h2 className="mt-8 text-2xl font-semibold text-ink">Horários disponíveis</h2>
+            <h2 className="mt-8 text-2xl font-semibold text-ink">
+              Horários disponíveis
+            </h2>
 
-            {!day && <p className="mt-3 text-muted">Nenhum horário livre nos próximos dias.</p>}
+            {!day && (
+              <p className="mt-3 text-muted">
+                Nenhum horário livre nos próximos dias.
+              </p>
+            )}
 
             {[
               { label: "Manhã", times: morning },
@@ -152,9 +185,11 @@ export function DateTimePage() {
                             aria-pressed={selected}
                             onClick={() => setSelectedTime(time)}
                             className={`rounded-full border-2 py-2 text-center transition
-                              ${selected
-                                ? "border-primary bg-primary font-semibold text-white"
-                                : "border-soft bg-surface text-ink hover:border-primary"}`}
+                              ${
+                                selected
+                                  ? "border-primary bg-primary font-semibold text-white"
+                                  : "border-soft bg-surface text-ink hover:border-primary"
+                              }`}
                           >
                             {time}
                           </button>
@@ -168,23 +203,25 @@ export function DateTimePage() {
         )}
       </main>
 
-      {/* Botão fixo embaixo, igual à referência */}
-      <footer className="fixed inset-x-0 bottom-0 bg-background/90 backdrop-blur">
-        <div className="mx-auto max-w-md px-4 py-3">
-          <button
-            type="button"
-            disabled={!selectedDate || !selectedTime}
-            onClick={() => {
-              if (!selectedDate || !selectedTime) return;
-              setSlot({ date: selectedDate, time: selectedTime });
-              navigate("/seus-dados");
-            }}
-            className="w-full rounded-2xl bg-primary py-4 text-lg font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Avançar
-          </button>
-        </div>
-      </footer>
+      <BookingFooter
+        disabled={!selectedDate || !selectedTime}
+        onNext={() => {
+          if (!selectedDate || !selectedTime) return;
+          setSlot({ date: selectedDate, time: selectedTime });
+          navigate("/seus-dados");
+        }}
+      >
+        {day && selectedTime ? (
+          <>
+            <p className="font-semibold text-ink">
+              {WEEKDAYS[day.weekday]}, {shortDate(day.date)}
+            </p>
+            <p className="text-muted">às {selectedTime}</p>
+          </>
+        ) : (
+          <span className="text-muted">Escolha o dia e o horário</span>
+        )}
+      </BookingFooter>
     </>
   );
 }
