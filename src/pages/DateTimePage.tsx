@@ -4,21 +4,8 @@ import { getAvailability, type AvailableDay } from "../api/availability";
 import { useBooking } from "../booking/BookingContext";
 import { BookingHeader } from "../components/BookingHeader";
 import { BookingFooter } from "../components/BookingFooter";
+import { shortDate, weekdayName } from "../lib/format";
 
-const WEEKDAYS = [
-  "Domingo",
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-];
-
-// "2026-10-21" → "21/10"
-function shortDate(date: string) {
-  return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
-}
 
 export function DateTimePage() {
   const { selectedServices, slot, setSlot } = useBooking();
@@ -138,7 +125,7 @@ export function DateTimePage() {
                         {shortDate(d.date)}
                       </span>
                       <span className="block text-sm">
-                        {full ? "Sem horários" : WEEKDAYS[d.weekday]}
+                        {full ? "Sem horários" : weekdayName(d.weekday)}
                       </span>
                     </button>
                   );
@@ -214,7 +201,7 @@ export function DateTimePage() {
         {day && selectedTime ? (
           <>
             <p className="font-semibold text-ink">
-              {WEEKDAYS[day.weekday]}, {shortDate(day.date)}
+              {weekdayName(day.weekday)}, {shortDate(day.date)}
             </p>
             <p className="text-muted">às {selectedTime}</p>
           </>

@@ -19,6 +19,8 @@ const shortTime = new Intl.DateTimeFormat("pt-BR", {
     minute: "2-digit",
 });
 
+const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
 export function formatPrice(value: string | number) {
     return currency.format(Number(value));
 }
@@ -41,4 +43,21 @@ export function formatLongDate(iso: string) {
 // "2026-10-21T17:00:00.000Z" → "14:00"
 export function formatTime(iso: string) {
     return shortTime.format(new Date(iso));
+}
+
+// 3 → "Quarta"
+export function weekdayName(weekday: number) {
+  return WEEKDAYS[weekday] ?? "";
+}
+
+// "2026-10-21" → "21/10"
+export function shortDate(date: string) {
+  return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
+}
+
+// "2026-10-21" → "Quarta, 21/10"
+export function formatSlotDate(date: string) {
+  // Meio-dia em UTC: o dia da semana não muda em nenhum fuso do Brasil
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return `${weekdayName(weekday)}, ${shortDate(date)}`;
 }
