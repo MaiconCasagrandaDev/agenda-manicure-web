@@ -1,12 +1,18 @@
 import { Link } from "react-router";
 import { SALON_NAME } from "../config";
+import type { ReactNode } from "react";
 
 type BookingHeaderProps = {
   backTo?: string; // opcional: sem ele, a seta não aparece
-  title?: string;  // texto grande ao lado do logo
+  title?: string; // texto grande ao lado do logo
+  action?: ReactNode; // opcional: algo fixo na direita (ex.: botão Sair)
 };
 
-export function BookingHeader({ backTo, title = "Agendar" }: BookingHeaderProps) {
+export function BookingHeader({
+  backTo,
+  title = "Agendar",
+  action,
+}: BookingHeaderProps) {
   return (
     <header className="border-b border-soft bg-background">
       {/* relative: a seta fica "presa" na esquerda sem empurrar o centro */}
@@ -37,6 +43,12 @@ export function BookingHeader({ backTo, title = "Agendar" }: BookingHeaderProps)
             <p className="mt-0.5 text-xl font-semibold text-ink">{title}</p>
           </div>
         </div>
+
+        {action && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            {action}
+          </div>
+        )}
       </div>
     </header>
   );
