@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { getMe, logout } from "../../api/admin";
 import { BookingHeader } from "../../components/BookingHeader";
+import type { Dispatch, SetStateAction } from "react";
 
-// O que as abas recebem da moldura (para atualizar o número de pedidos)
 export type AdminOutletContext = {
-  setPendingCount: (count: number) => void;
+  setPendingCount: Dispatch<SetStateAction<number>>;
 };
 
 const TABS = [
