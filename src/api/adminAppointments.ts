@@ -43,15 +43,17 @@ export async function getDayAppointments(date: string): Promise<AppointmentList>
   return response.json();
 }
 
+// options.blockSlot: ao cancelar, o horário vira bloqueio (não volta para as clientes)
 export async function updateAppointment(
   id: number,
   action: AppointmentAction,
+  options: { blockSlot?: boolean } = {},
 ): Promise<AdminAppointment> {
   const response = await fetch(`${API_URL}/admin/appointments/${id}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ action, ...options }),
   });
   if (!response.ok) throw await toApiError(response);
   return response.json();

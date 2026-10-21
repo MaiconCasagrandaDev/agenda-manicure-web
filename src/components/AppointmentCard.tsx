@@ -6,12 +6,14 @@ import { formatBrazilianMobile } from "../lib/phone";
 type AppointmentCardProps = {
   appointment: AdminAppointment;
   showDate?: boolean; // Pedidos mostra a data; na Agenda o dia já está escolhido
+  note?: ReactNode; // observação em destaque (ex.: "Lembrete enviado")
   children?: ReactNode; // os botões de ação
 };
 
 export function AppointmentCard({
   appointment: a,
   showDate = false,
+  note,
   children,
 }: AppointmentCardProps) {
   return (
@@ -47,6 +49,10 @@ export function AppointmentCard({
         <p className="mt-1 text-xs text-muted">
           Não autorizou mensagens no WhatsApp
         </p>
+      )}
+
+      {note && (
+        <p className="mt-1 text-xs font-semibold text-primary">{note}</p>
       )}
 
       {children && <div className="mt-4 flex gap-2">{children}</div>}

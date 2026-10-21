@@ -21,6 +21,7 @@ export function PendingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [decliningId, setDecliningId] = useState<number | null>(null); // card pedindo confirmação da recusa
   const [done, setDone] = useState<Record<number, Done>>({});
 
   useEffect(() => {
@@ -49,22 +50,20 @@ export function PendingPage() {
     };
   }, [navigate, setPendingCount]);
 
+  // confirm → vai para a Agenda | decline → recusa e bloqueia o horário
   async function handleAction(a: AdminAppointment, action: "confirm" | "decline") {
-    if (
-      action === "decline" &&
-      !window.confirm(`Recusar o pedido de ${a.customerName}? O horário volta a ficar livre.`)
-    ) {
-      return;
-    }
-
     setBusyId(a.id);
     setError(null);
     try {
-      const updated = await updateAppointment(a.id, action);
+      // Recusar sempre bloqueia: se ela recusou, é porque não pode atender
+      const updated = await updateAppointment(a.id, action, {
+        blockSlot: action === "decline",
+      });
       setDone((current) => ({
         ...current,
         [a.id]: { kind: action === "confirm" ? "confirmed" : "declined", appointment: updated },
       }));
+      setDecliningId(null);
       setPendingCount((count) => Math.max(0, count - 1));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -107,6 +106,7 @@ export function PendingPage() {
             <li key={a.id}>
               <AppointmentCard appointment={result?.appointment ?? a} showDate>
                 {result ? (
+                  // Depois de confirmar ou recusar: avisar a cliente
                   <div className="w-full">
                     <p className="text-sm font-semibold text-ink">
                       {result.kind === "confirmed" ? "Horário confirmado" : "Pedido recusado"}
@@ -134,7 +134,33 @@ export function PendingPage() {
                       </button>
                     </div>
                   </div>
+                ) : decliningId === a.id ? (
+                  // Confirmação da recusa: o horário fica bloqueado
+                  <div className="w-full">
+                    <p className="text-sm font-semibold text-ink">Recusar este pedido?</p>
+                    <p className="mt-1 text-xs text-muted">
+                      O horário fica bloqueado para outras clientes.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId === a.id}
+                        onClick={() => handleAction(a, "decline")}
+                        className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+                      >
+                        Recusar pedido
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDecliningId(null)}
+                        className="flex-1 rounded-xl border-2 border-soft py-3 font-semibold text-ink transition hover:border-primary"
+                      >
+                        Voltar
+                      </button>
+                    </div>
+                  </div>
                 ) : (
+                  // Normal: confirmar ou recusar
                   <>
                     <button
                       type="button"
@@ -146,9 +172,8 @@ export function PendingPage() {
                     </button>
                     <button
                       type="button"
-                      disabled={busyId === a.id}
-                      onClick={() => handleAction(a, "decline")}
-                      className="flex-1 rounded-xl border-2 border-soft py-3 font-semibold text-ink transition hover:border-primary disabled:opacity-50"
+                      onClick={() => setDecliningId(a.id)}
+                      className="flex-1 rounded-xl border-2 border-soft py-3 font-semibold text-ink transition hover:border-primary"
                     >
                       Recusar
                     </button>

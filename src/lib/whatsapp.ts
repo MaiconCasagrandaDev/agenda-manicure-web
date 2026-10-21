@@ -48,3 +48,11 @@ export function reminderMessage(a: AdminAppointment) {
     "Te espero!",
   ].join("\n");
 }
+
+export function cancellationMessage(a: AdminAppointment) {
+  return [
+    `Oi, ${firstName(a.customerName)}! Infelizmente precisei cancelar o seu horário de ${when(a)}.`,
+    "",
+    "Me desculpe pelo transtorno! Quer remarcar? Me chama aqui que a gente encontra outro horário 😊",
+  ].join("\n");
+}
