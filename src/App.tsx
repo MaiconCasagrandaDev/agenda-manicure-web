@@ -8,6 +8,7 @@ import { AdminLayout } from "./pages/admin/AdminLayout";
 import { PendingPage } from "./pages/admin/PendingPage";
 import { AgendaPage } from "./pages/admin/AgendaPage";
 import { BlocksPage } from "./pages/admin/BlocksPage";
+import { NewBlockPage } from "./pages/admin/NewBlockPage";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route index element={<PendingPage />} />
         <Route path="agenda" element={<AgendaPage />} />
         <Route path="bloqueios" element={<BlocksPage />} />
+        <Route path="bloqueios/novo" element={<NewBlockPage />} />
       </Route>
     </Routes>
   );

@@ -4,7 +4,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const TIME_ZONE = "America/Sao_Paulo";
+export const TIME_ZONE = "America/Sao_Paulo";
 
 const longDate = new Intl.DateTimeFormat("pt-BR", {
   timeZone: TIME_ZONE,
@@ -77,12 +77,17 @@ const dateInBrazil = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
 });
 
-// Hoje em Brasília → "2026-10-21" (mesmo que o celular esteja em outro fuso)
-export function todayInBrazil() {
-  const parts = dateInBrazil.formatToParts(new Date());
+// Instante → dia em Brasília: "2026-10-22T16:00:00Z" → "2026-10-22"
+export function localDateOf(instant: string | Date) {
+  const parts = dateInBrazil.formatToParts(new Date(instant));
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((p) => p.type === type)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+// Hoje em Brasília → "2026-10-21" (mesmo que o celular esteja em outro fuso)
+export function todayInBrazil() {
+  return localDateOf(new Date());
 }
 
 // "2026-10-21" + 1 → "2026-10-22" (cuida da virada de mês e de ano)
