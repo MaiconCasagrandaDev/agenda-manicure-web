@@ -1,8 +1,21 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { createTimeOff, type NewTimeOff } from "../../api/timeOff";
+import { Link, useNavigate, useOutletContext } from "react-router";
+import {
+  createTimeOff,
+  TimeOffConflictError,
+  type BlockedClient,
+  type NewTimeOff,
+} from "../../api/timeOff";
 import { ApiError } from "../../api/errors";
-import { formatSlotDate, shortDate, todayInBrazil } from "../../lib/format";
+import {
+  formatSlotDate,
+  formatTime,
+  localDateOf,
+  shortDate,
+  todayInBrazil,
+} from "../../lib/format";
+import { cancellationMessage, declineMessage, whatsappLink } from "../../lib/whatsapp";
+import type { AdminOutletContext } from "./AdminLayout";
 
 type Kind = NewTimeOff["kind"];
 
@@ -14,11 +27,7 @@ const KINDS: { value: Kind; label: string }[] = [
   { value: "period", label: "Férias" },
 ];
 
-const KIND_SUFFIX = {
-  day: "dia inteiro",
-  morning: "manhã",
-  afternoon: "tarde",
-};
+const KIND_SUFFIX = { day: "dia inteiro", morning: "manhã", afternoon: "tarde" };
 
 // 07:00, 07:30 ... 21:00 (mesma grade de 30 min da agenda)
 const TIMES = Array.from({ length: 29 }, (_, i) => {
@@ -33,8 +42,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const inputClass =
   "mt-1 w-full rounded-xl border-2 border-soft bg-surface px-3 py-3 text-ink focus:border-primary focus:outline-none";
 
+// "Segunda, 26/10 · 14:00"
+function whenText(c: BlockedClient) {
+  return `${formatSlotDate(localDateOf(c.startsAt))} · ${formatTime(c.startsAt)}`;
+}
+
+function servicesText(c: BlockedClient) {
+  return c.items.map((i) => i.serviceName).join(", ");
+}
+
 export function NewBlockPage() {
   const navigate = useNavigate();
+  const { setPendingCount } = useOutletContext<AdminOutletContext>();
   const today = todayInBrazil();
 
   const [kind, setKind] = useState<Kind>("day");
@@ -47,12 +66,15 @@ export function NewBlockPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [conflicts, setConflicts] = useState<BlockedClient[] | null>(null); // modo 2: aviso
+  const [canceled, setCanceled] = useState<BlockedClient[] | null>(null); // modo 3: avisar
+  const [notified, setNotified] = useState<number[]>([]); // quem já teve o WhatsApp aberto
+
   // Resumo do que vai ser bloqueado; null = formulário incompleto ou inválido
   let summary: string | null = null;
   if (kind === "period") {
     if (startDate && endDate && endDate >= startDate) {
-      const days =
-        Math.round((Date.parse(endDate) - Date.parse(startDate)) / DAY_MS) + 1;
+      const days = Math.round((Date.parse(endDate) - Date.parse(startDate)) / DAY_MS) + 1;
       summary = `${shortDate(startDate)} até ${shortDate(endDate)} · ${days} ${days === 1 ? "dia" : "dias"}`;
     }
   } else if (date) {
@@ -71,21 +93,38 @@ export function NewBlockPage() {
     return { kind, date, ...extra };
   }
 
-  async function handleSubmit() {
+  // force = true → a API cancela as clientes marcadas e cria o bloqueio
+  async function handleSubmit(force: boolean) {
     if (!summary || saving) return;
     setSaving(true);
     setError(null);
     try {
-      await createTimeOff(buildInput());
-      navigate("/admin/bloqueios");
+      const result = await createTimeOff({ ...buildInput(), force });
+
+      // Ninguém foi cancelado: volta direto para a lista
+      if (result.canceled.length === 0) {
+        navigate("/admin/bloqueios");
+        return;
+      }
+
+      // Pedidos pendentes cancelados saem do contador da aba Pedidos
+      const pendingCanceled = result.canceled.filter((c) => c.status === "PENDING").length;
+      if (pendingCanceled > 0) setPendingCount((n) => Math.max(0, n - pendingCanceled));
+
+      setConflicts(null);
+      setCanceled(result.canceled);
+      setSaving(false);
     } catch (err) {
+      if (err instanceof TimeOffConflictError) {
+        setConflicts(err.conflicts);
+        setSaving(false);
+        return;
+      }
       if (err instanceof ApiError && err.status === 401) {
         navigate("/admin/login", { replace: true });
         return;
       }
-      setError(
-        err instanceof ApiError ? err.message : "Sem conexão com o servidor.",
-      );
+      setError(err instanceof ApiError ? err.message : "Sem conexão com o servidor.");
       setSaving(false);
     }
   }
@@ -95,12 +134,145 @@ export function NewBlockPage() {
     if (endDate < value) setEndDate(value); // o fim nunca fica antes do começo
   }
 
+  // ---------- Modo 3: bloqueado, avisar as clientes ----------
+  if (canceled) {
+    return (
+      <>
+        <div className="text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-7 w-7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold text-ink">Bloqueado</h1>
+          <p className="mt-1 text-muted">{summary}</p>
+        </div>
+
+        <h2 className="mt-8 text-xs font-semibold uppercase tracking-widest text-primary">
+          Avise as clientes
+        </h2>
+        <ul className="mt-2 space-y-3">
+          {canceled.map((c) => {
+            const message = c.status === "PENDING" ? declineMessage(c) : cancellationMessage(c);
+            const done = notified.includes(c.id);
+            return (
+              <li key={c.id} className="rounded-2xl border-2 border-soft bg-surface p-4">
+                <p className="font-semibold text-ink">{c.customerName}</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {whenText(c)} · {servicesText(c)}
+                </p>
+                {/* Link (e não window.open): o navegador bloqueia abrir depois de um await */}
+                <a
+                  href={whatsappLink(c.client.phone, message)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setNotified((ids) => (ids.includes(c.id) ? ids : [...ids, c.id]))}
+                  className={`mt-3 block rounded-xl py-3 text-center font-semibold transition ${
+                    done
+                      ? "border-2 border-soft text-muted"
+                      : "bg-primary text-white hover:bg-primary-hover"
+                  }`}
+                >
+                  {done ? "Aviso aberto no WhatsApp" : "Avisar no WhatsApp"}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+
+        <button
+          type="button"
+          onClick={() => navigate("/admin/bloqueios")}
+          className="mt-6 w-full rounded-xl border-2 border-soft py-3 font-semibold text-ink transition hover:border-primary"
+        >
+          Concluir
+        </button>
+      </>
+    );
+  }
+
+  // ---------- Modo 2: tem cliente marcada ----------
+  if (conflicts) {
+    const n = conflicts.length;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setConflicts(null)}
+          className="text-sm font-semibold text-primary"
+        >
+          ← Voltar
+        </button>
+        <h1 className="mt-2 text-2xl font-semibold text-ink">
+          {n === 1 ? "1 cliente marcada" : `${n} clientes marcadas`}
+        </h1>
+        <p className="mt-1 text-muted">{summary}</p>
+
+        <div className="mt-5 rounded-2xl border-2 border-primary bg-surface p-4">
+          <p className="text-sm text-ink">
+            Para bloquear, {n === 1 ? "esse horário será cancelado" : "esses horários serão cancelados"}.
+            Depois você avisa cada cliente no WhatsApp.
+          </p>
+          <ul className="mt-4 divide-y-2 divide-soft">
+            {conflicts.map((c) => (
+              <li key={c.id} className="py-3 first:pt-0 last:pb-0">
+                <p className="font-semibold text-ink">
+                  {c.customerName}
+                  {c.status === "PENDING" && (
+                    <span className="ml-2 rounded-full bg-soft px-2 py-0.5 text-xs font-semibold text-muted">
+                      pendente
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {whenText(c)} · {servicesText(c)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-primary">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-5 space-y-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void handleSubmit(true)}
+            className="w-full rounded-xl bg-primary py-3 font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
+          >
+            {saving ? "Cancelando..." : "Cancelar e bloquear"}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setConflicts(null)}
+            className="w-full rounded-xl border-2 border-soft py-3 font-semibold text-ink transition hover:border-primary disabled:opacity-50"
+          >
+            Voltar
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  // ---------- Modo 1: formulário ----------
   return (
     <>
-      <Link
-        to="/admin/bloqueios"
-        className="text-sm font-semibold text-primary"
-      >
+      <Link to="/admin/bloqueios" className="text-sm font-semibold text-primary">
         ← Bloqueios
       </Link>
       <h1 className="mt-2 text-2xl font-semibold text-ink">Novo bloqueio</h1>
@@ -109,7 +281,7 @@ export function NewBlockPage() {
         className="mt-5 space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
-          void handleSubmit();
+          void handleSubmit(false);
         }}
       >
         {/* Tipo */}
@@ -179,11 +351,7 @@ export function NewBlockPage() {
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm font-semibold text-ink">
                 De
-                <select
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  className={inputClass}
-                >
+                <select value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass}>
                   {TIMES.slice(0, -1).map((t) => (
                     <option key={t}>{t}</option>
                   ))}
@@ -191,11 +359,7 @@ export function NewBlockPage() {
               </label>
               <label className="block text-sm font-semibold text-ink">
                 Até
-                <select
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className={inputClass}
-                >
+                <select value={to} onChange={(e) => setTo(e.target.value)} className={inputClass}>
                   {TIMES.filter((t) => t > from).map((t) => (
                     <option key={t}>{t}</option>
                   ))}
@@ -203,9 +367,7 @@ export function NewBlockPage() {
               </label>
             </div>
             {to > from && (
-              <p className="mt-2 text-sm text-muted">
-                Você volta a atender às {to}.
-              </p>
+              <p className="mt-2 text-sm text-muted">Você volta a atender às {to}.</p>
             )}
           </div>
         )}
@@ -230,9 +392,7 @@ export function NewBlockPage() {
 
         {/* Resumo + botão */}
         <div className="rounded-2xl border-2 border-soft bg-surface p-4">
-          <p className="font-semibold text-ink">
-            {summary ?? "Confira as datas e horários"}
-          </p>
+          <p className="font-semibold text-ink">{summary ?? "Confira as datas e horários"}</p>
           <button
             type="submit"
             disabled={!summary || saving}
