@@ -1,75 +1,77 @@
-# React + TypeScript + Vite
+# Agenda Manicure · Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Site de agendamento online de um estúdio de manicure. As clientes marcam horário pelo celular em poucos passos, e a profissional gerencia tudo por um painel.
 
-Currently, two official plugins are available:
+> 🚧 Projeto em desenvolvimento. A API está em [agenda-manicure-api](https://github.com/MaiconCasagrandaDev/agenda-manicure-api).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Telas
 
-## React Compiler
+**Cliente**
+1. **Serviços:** lista com foto, preço e duração; dá para escolher até 3
+2. **Horário:** dias disponíveis e horários separados em manhã e tarde
+3. **Seus dados:** nome e celular
+4. **Pedido recebido:** resumo do agendamento, aguardando confirmação
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Painel da profissional**
+- **Pedidos:** confirma ou recusa, com mensagem pronta para o WhatsApp
+- **Agenda:** dia a dia, com lembrete e cancelamento pelo WhatsApp
+- **Bloqueios:** dia inteiro, manhã, tarde, horário específico ou férias; se houver clientes marcadas, mostra quem são e permite cancelar e avisar cada uma
 
-## Expanding the ESLint configuration
+## Destaques
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Pensado primeiro para o celular
+- Datas e horários sempre no fuso de Brasília, mesmo que o aparelho esteja em outro fuso
+- Avisos pelo WhatsApp com links `wa.me` e mensagem pronta, sem custo por mensagem
+- Sessão do painel por cookie `HttpOnly`, enviado com `credentials: "include"`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tecnologias
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- React + TypeScript
+- Vite
+- Tailwind CSS v4
+- React Router
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Como rodar
 
+Pré-requisitos: Node.js e a [API](https://github.com/MaiconCasagrandaDev/agenda-manicure-api) rodando.
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Crie um arquivo `.env` na raiz com o endereço da API. **Nunca suba o `.env` para o GitHub.**
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```env
+VITE_API_URL=http://localhost:3000
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
+```
+
+- Cliente: `http://localhost:5173/`
+- Painel: `http://localhost:5173/admin`
+
+## Estrutura
 
 ```
+src/
+├── api/          # chamadas à API
+├── booking/      # estado do agendamento (Context)
+├── components/   # cabeçalho, rodapé, cards, campos
+├── lib/          # formatação, telefone, WhatsApp
+└── pages/        # telas da cliente
+    └── admin/    # telas do painel
+```
+
+## Próximos passos
+
+- Calendário do mês no painel
+- Lembrar os dados da cliente no aparelho
+- Área "Meus horários" para a cliente
+- Página inicial do estúdio
+- Deploy
+
+---
+
+Desenvolvido por [Maicon Casagranda](https://github.com/MaiconCasagrandaDev) · estudante de Análise e Desenvolvimento de Sistemas.
